@@ -1,6 +1,3 @@
-// title{
-// 	timestamp: wordcount
-// }
 import {
 	isToday,
 	isThisWeek,
@@ -34,13 +31,14 @@ export default {
 				};
 
 				const existingData = await env.tracker.get(title);
+				
 				if (!existingData) {
 					// Save it to the KV store using the title as the key
 					await env.tracker.put(title, JSON.stringify(stats));
 				} else {
-					const data = await JSON.parse(existingData);
-					data[time] = wordcount;
-					await env.tracker.put(title, JSON.stringify(data));
+					const projectData = await JSON.parse(existingData);
+					projectData[time] = wordcount;
+					await env.tracker.put(title, JSON.stringify(projectData));
 				}
 
 				return new Response('Data saved successfully.', { status: 200 });
@@ -52,7 +50,9 @@ export default {
 
 		// Handle GET request to retrieve data
 		if (request.method === 'GET' && url.pathname.startsWith('/get-stats')) {
+			// not sure we need this? 
 			const title = url.pathname.split('/').pop(); // Extract the title from the URL path
+
 
 			try {
 				// Retrieve the data from KV using the title as the key
@@ -69,20 +69,21 @@ export default {
 			}
 		}
 		if (url.pathname.startsWith('/view-stats')) {
-			const keys = await env.tracker.list();
 
 			const getAllData = async () => {
 				console.log('GETTING ALL DATA');
-				// console.log('list of titles/keys', keys);
+				const keys = await env.tracker.list();
+
 				const timeZone = 'America/New_York';
 
 				const data = {};
 
+				// loop over all projects 
 				for (const key of keys.keys) {
-					// console.log('getting data for key', key);
-					const value = await env.tracker.get(key.name); // Fetch value as JSON
-					// console.log('value is', value);
 
+					// get data for project
+					const value = await env.tracker.get(key.name); // Fetch value as JSON
+					
 					try {
 						// const date = parseISO(key.name);
 						// console.log({ key, date });
@@ -91,14 +92,14 @@ export default {
 
 						// const formatted = formatInTimeZone(date, 'America/New_York', 'yyyy-MM-dd HH:mm:ss zzz'); // 2014-10-25 06:46:20 EST
 						// console.log(formatted);
+
+						// parse JSON object of timestamps and wordcounts. still in unix time at this point
+						
 						const parsed = JSON.parse(value);
 						data[key.name] = parsed;
 					} catch (error) {
 						data[key.name] = value;
 					}
-					// data[key.name] = parsed? parsed : value;
-
-					// console.log('full data', data);
 				}
 				return data;
 			};
@@ -139,8 +140,6 @@ export default {
 					'2024-12-27T12:00:00.000Z': 300, // Added entry for today (12/27)
 				},
 			};
-
-			// console.log(mockData);
 
 			function calculateWordCountByRangeForMultipleProjects(data) {
 				const result = {
