@@ -31,7 +31,7 @@ export default {
 				};
 
 				const existingData = await env.tracker.get(title);
-				
+
 				if (!existingData) {
 					// Save it to the KV store using the title as the key
 					await env.tracker.put(title, JSON.stringify(stats));
@@ -50,9 +50,8 @@ export default {
 
 		// Handle GET request to retrieve data
 		if (request.method === 'GET' && url.pathname.startsWith('/get-stats')) {
-			// not sure we need this? 
+			// not sure we need this?
 			const title = url.pathname.split('/').pop(); // Extract the title from the URL path
-
 
 			try {
 				// Retrieve the data from KV using the title as the key
@@ -69,21 +68,21 @@ export default {
 			}
 		}
 		if (url.pathname.startsWith('/view-stats')) {
+			const keys = await env.tracker.list();
 
 			const getAllData = async () => {
 				console.log('GETTING ALL DATA');
-				const keys = await env.tracker.list();
+				// const keys = await env.tracker.list();
 
 				const timeZone = 'America/New_York';
 
 				const data = {};
 
-				// loop over all projects 
+				// loop over all projects
 				for (const key of keys.keys) {
-
 					// get data for project
 					const value = await env.tracker.get(key.name); // Fetch value as JSON
-					
+					console.log('NAME', key.name)
 					try {
 						// const date = parseISO(key.name);
 						// console.log({ key, date });
@@ -93,10 +92,18 @@ export default {
 						// const formatted = formatInTimeZone(date, 'America/New_York', 'yyyy-MM-dd HH:mm:ss zzz'); // 2014-10-25 06:46:20 EST
 						// console.log(formatted);
 
-						// parse JSON object of timestamps and wordcounts. still in unix time at this point
-						
 						const parsed = JSON.parse(value);
-						data[key.name] = parsed;
+
+						const dataInTZ = Object.fromEntries(
+							Object.entries(parsed).map(([timestamp, wordCount]) => [
+								formatInTimeZone(timestamp, timeZone, 'yyy-MM-dd HH:mm:ss'),
+								wordCount,
+							])
+						);
+						console.log('PARSED', {parsed})
+						console.log('TZ', {dataInTZ})
+						data[key.name] = dataInTZ;
+
 					} catch (error) {
 						data[key.name] = value;
 					}
@@ -447,7 +454,7 @@ export default {
 						<tbody>
 				`;
 				let prevWordCount = null;
-				let wordsAdded = 0
+				let wordsAdded = 0;
 
 				for (const [timestamp, wordCount] of Object.entries(data)) {
 					let wordsAdded;
